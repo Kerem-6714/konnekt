@@ -1,15 +1,36 @@
-const { invoke } = window.__TAURI__.tauri;
+import { invoke } from '@tauri-apps/api/core';
+import QRCode from 'qrcode';
 
-let greetInputEl;
-let greetMsgEl;
+async function renderLocalIpQr() {
+  const ipTextElement = document.getElementById('ip-text');
+  const canvasElement = document.getElementById('qr-canvas');
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-});
+  try {
+    // Rust backend'inden IP adresini en güvenli modern yöntemle istiyoruz
+    const ip = await invoke('get_local_ip');
+    console.log("Başarıyla Alınan IP:", ip);
 
-async function greet() {
-  greetMsgEl.textContent = await invoke("greet", { name: greetInputEl.value });
+    // Ekranda IP adresini göster
+    if (ipTextElement) {
+      ipTextElement.innerText = `IP Adresiniz: ${ip}`;
+    }
+
+    // Paket kütüphanesini kullanarak QR kodu canvas üzerine çiz
+    if (canvasElement) {
+      await QRCode.toCanvas(canvasElement, String(ip), {
+        width: 256,
+        margin: 2
+      });
+    }
+  } catch (err) {
+    console.error('IP QR yükleme hatası:', err);
+    if (ipTextElement) {
+      ipTextElement.innerText = 'IP adresi veya Tauri bağlantısı alınamadı!';
+    }
+  }
 }
 
-window.greet = greet;
+// Sayfa yüklendiğinde fonksiyonu çalıştır
+window.addEventListener('DOMContentLoaded', () => {
+  renderLocalIpQr();
+});
