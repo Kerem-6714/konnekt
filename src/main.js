@@ -6,16 +6,23 @@ async function renderLocalIpQr() {
   const canvasElement = document.getElementById('qr-canvas');
 
   try {
-    // Rust backend'inden IP adresini en güvenli modern yöntemle istiyoruz
+    // --- TAURI V2 YÜKLENME KORUMASI ---
+    // Tarayıcı motorunun (WebKit) Tauri iç fonksiyonlarını tamamen hazır etmesini bekliyoruz
+    let attempts = 0;
+    while ((typeof window === 'undefined' || !window.__TAURI_INTERNALS__) && attempts < 30) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    // ----------------------------------
+
+    // Şimdi güvenle çağırabiliriz, core.js artık çökmeyecek
     const ip = await invoke('get_local_ip');
     console.log("Başarıyla Alınan IP:", ip);
 
-    // Ekranda IP adresini göster
     if (ipTextElement) {
       ipTextElement.innerText = `IP Adresiniz: ${ip}`;
     }
 
-    // Paket kütüphanesini kullanarak QR kodu canvas üzerine çiz
     if (canvasElement) {
       await QRCode.toCanvas(canvasElement, String(ip), {
         width: 256,
@@ -25,12 +32,11 @@ async function renderLocalIpQr() {
   } catch (err) {
     console.error('IP QR yükleme hatası:', err);
     if (ipTextElement) {
-      ipTextElement.innerText = 'IP adresi veya Tauri bağlantısı alınamadı!';
+      ipTextElement.innerText = 'Bağlantı hatası!';
     }
   }
 }
 
-// Sayfa yüklendiğinde fonksiyonu çalıştır
 window.addEventListener('DOMContentLoaded', () => {
   renderLocalIpQr();
 });
